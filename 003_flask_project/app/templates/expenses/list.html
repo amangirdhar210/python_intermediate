@@ -1,0 +1,27 @@
+{% extends "base.html" %} {% block title %}Expenses - {{ group['name'] }}{%
+endblock %} {% block content %}
+<h1>All Expenses - {{ group['name'] }}</h1>
+
+<a href="{{ url_for('expenses.create', group_id=group['id']) }}" class="btn"
+  >Add Expense</a
+>
+<a href="{{ url_for('groups.view', group_id=group['id']) }}" class="btn"
+  >Back to Group</a
+>
+
+{% if expenses %}
+<ul>
+  {% for expense in expenses %}
+  <li>
+    <h3>{{ expense['description'] }}</h3>
+    <p>Amount: ${{ "%.2f"|format(expense['amount']) }}</p>
+    <p>
+      Paid by {{ expense['paid_by_user']['name'] }} on {{
+      expense['expense_date'] }}
+    </p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No expenses in this group yet.</p>
+{% endif %} {% endblock %}

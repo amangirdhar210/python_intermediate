@@ -1,0 +1,26 @@
+{% extends "base.html" %} {% block title %}Groups{% endblock %} {% block content
+%}
+<h1>Your Groups</h1>
+
+<div class="actions-bar">
+  <a href="{{ url_for('groups.create') }}" class="btn btn-primary"
+    >Create Group</a
+  >
+</div>
+
+{% if groups %}
+<div class="groups-list">
+  {% for group in groups %}
+  <div class="group-item">
+    <h3>
+      <a href="{{ url_for('groups.view', group_id=group['id']) }}"
+        >{{ group['name'] }}</a
+      >
+    </h3>
+    <p>{{ group['description'] }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p>No groups yet. Create one to get started!</p>
+{% endif %} {% endblock %}

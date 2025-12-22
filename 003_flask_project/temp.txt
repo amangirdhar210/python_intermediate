@@ -1,0 +1,608 @@
+================================================================================
+                    SPLITWISE CLONE - TECHNICAL DOCUMENTATION
+================================================================================
+
+PROJECT OVERVIEW
+================================================================================
+A Flask-based expense splitting application similar to Splitwise, allowing users
+to create groups, add expenses, and track who owes whom money.
+
+Technology Stack:
+- Flask 3.0.0 (Web Framework)
+- SQLite3 (Database - native Python module, no ORM)
+- bcrypt 4.1.2 (Password Hashing)
+- Flask-Login 0.6.3 (User Session Management)
+- UUID (Primary Key Generation)
+- Jinja2 (Templating Engine - comes with Flask)
+
+
+================================================================================
+                          PROJECT ARCHITECTURE
+================================================================================
+
+The project follows a layered architecture pattern:
+
+┌─────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                        │
+│  Templates (Jinja2 HTML) + Static Files (CSS)              │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      ROUTING LAYER                           │
+│  Routes/Controllers (Flask Blueprints)                      │
+│  - auth.py, groups.py, expenses.py, settlements.py         │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     BUSINESS LOGIC LAYER                     │
+│  Services (Domain Logic)                                    │
+│  - AuthService, GroupService, ExpenseService, etc.          │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     DATA ACCESS LAYER                        │
+│  Repositories (Database Operations)                         │
+│  - UserRepository, GroupRepository, etc.                    │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                        DATABASE                              │
+│  SQLite3 (splitwise.db)                                     │
+└─────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                          DATABASE SCHEMA
+================================================================================
+
+1. USERS TABLE
+   - id: TEXT (UUID) - Primary Key
+   - email: TEXT (UNIQUE, NOT NULL)
+   - username: TEXT (UNIQUE, NOT NULL)
+   - password_hash: TEXT (bcrypt hashed)
+   - name: TEXT
+   - created_at: TIMESTAMP (DEFAULT CURRENT_TIMESTAMP)
+
+2. GROUPS TABLE
+   - id: TEXT (UUID) - Primary Key
+   - name: TEXT (NOT NULL)
+   - description: TEXT
+   - created_by: TEXT (Foreign Key -> users.id)
+   - created_at: TIMESTAMP
+
+3. GROUP_MEMBERS TABLE (Junction Table)
+   - id: TEXT (UUID) - Primary Key
+   - group_id: TEXT (Foreign Key -> groups.id, CASCADE DELETE)
+   - user_id: TEXT (Foreign Key -> users.id, CASCADE DELETE)
+   - joined_at: TIMESTAMP
+
+4. EXPENSES TABLE
+   - id: TEXT (UUID) - Primary Key
+   - description: TEXT (NOT NULL)
+   - amount: REAL (NOT NULL)
+   - group_id: TEXT (Foreign Key -> groups.id, CASCADE DELETE)
+   - paid_by: TEXT (Foreign Key -> users.id)
+   - expense_date: TIMESTAMP
+
+5. EXPENSE_SPLITS TABLE
+   - id: TEXT (UUID) - Primary Key
+   - expense_id: TEXT (Foreign Key -> expenses.id, CASCADE DELETE)
+   - user_id: TEXT (Foreign Key -> users.id)
+   - amount: REAL (NOT NULL)
+
+6. SETTLEMENTS TABLE
+   - id: TEXT (UUID) - Primary Key
+   - group_id: TEXT (Foreign Key -> groups.id, CASCADE DELETE)
+   - from_user_id: TEXT (Foreign Key -> users.id)
+   - to_user_id: TEXT (Foreign Key -> users.id)
+   - amount: REAL (NOT NULL)
+   - settled_at: TIMESTAMP
+
+
+================================================================================
+                        FILE STRUCTURE
+================================================================================
+
+003_flask_project/
+├── run.py                          # Application entry point
+├── config.py                       # Configuration classes
+├── requirements.txt                # Python dependencies
+├── app/
+│   ├── __init__.py                # App factory, DB initialization
+│   ├── schema.sql                 # Database schema
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── user.py                # User class for Flask-Login
+│   │
+│   ├── repositories/              # Data Access Layer
+│   │   ├── user_repository.py
+│   │   ├── group_repository.py
+│   │   ├── expense_repository.py
+│   │   └── settlement_repository.py
+│   │
+│   ├── services/                  # Business Logic Layer
+│   │   ├── auth_service.py
+│   │   ├── group_service.py
+│   │   ├── expense_service.py
+│   │   └── balance_service.py
+│   │
+│   ├── routes/                    # Routing/Controller Layer
+│   │   ├── auth.py
+│   │   ├── main.py
+│   │   ├── groups.py
+│   │   ├── expenses.py
+│   │   └── settlements.py
+│   │
+│   ├── templates/                 # Jinja2 HTML Templates
+│   │   ├── base.html
+│   │   ├── index.html
+│   │   ├── dashboard.html
+│   │   ├── auth/
+│   │   ├── groups/
+│   │   ├── expenses/
+│   │   └── settlements/
+│   │
+│   └── static/
+│       └── css/
+│           └── style.css          # Simple beginner-level CSS
+
+
+================================================================================
+                        LAYER-BY-LAYER EXPLANATION
+================================================================================
+
+1. APP INITIALIZATION (app/__init__.py)
+   ----------------------------------------
+   - get_db(): Returns database connection from Flask's g object (per-request)
+   - close_db(): Closes database connection after request
+   - init_db(): Creates tables from schema.sql if database doesn't exist
+   - create_app(): Factory pattern to create Flask application
+   - load_user(): Callback for Flask-Login to load user from session
+
+   Key Points:
+   - Database connection is created per request and stored in 'g'
+   - sqlite3.Row is used as row_factory for dict-like access
+   - Database auto-initializes on first run
+
+
+2. MODELS LAYER (app/models/)
+   ----------------------------------------
+   user.py - User Class:
+   - Simple POJO (Plain Old Java Object) style class
+   - NOT a database model (we don't use ORM)
+   - Only exists for Flask-Login compatibility
+   - Stores: id, email, username, password_hash, name, created_at
+   - Implements UserMixin methods: get_id(), is_authenticated, etc.
+
+
+3. REPOSITORY LAYER (app/repositories/)
+   ----------------------------------------
+   Purpose: Direct database interaction using raw SQL queries
+   
+   Why Static Methods?
+   - Repositories are stateless (don't store data between calls)
+   - No need to create instances (new objects)
+   - Acts like a collection of utility functions
+   - Simpler for beginners: UserRepository.get_by_id() vs repo = UserRepository(); repo.get_by_id()
+   
+   UserRepository:
+   - create(email, username, name, password): Creates user with bcrypt hash
+   - get_by_id(user_id): Returns User object by UUID
+   - get_by_email(email): Finds user by email
+   - get_by_username(username): Finds user by username
+   - get_all(): Returns all users
+   - search(query): Searches users by username/email/name (LIKE query)
+   - check_password(user, password): Verifies bcrypt password
+   
+   GroupRepository:
+   - create(name, created_by, description): Creates group + adds creator as member
+   - get_by_id(group_id): Returns group dict
+   - get_user_groups(user_id): Returns all groups user is member of (JOIN query)
+   - add_member(group_id, user_id): Adds user to group
+   - get_members(group_id): Returns members with user details (JOIN query)
+   - is_member(group_id, user_id): Checks membership
+   - delete(group_id): Removes group (CASCADE deletes members/expenses)
+   
+   ExpenseRepository:
+   - create(description, amount, group_id, paid_by, splits): Creates expense + splits
+   - get_by_id(expense_id): Returns expense dict
+   - get_by_group(group_id): Returns expenses with payer info (JOIN query)
+   - get_splits(expense_id): Returns split details for expense
+   - delete(expense_id): Removes expense (CASCADE deletes splits)
+   
+   SettlementRepository:
+   - create(group_id, from_user_id, to_user_id, amount): Records payment
+   - get_by_id(settlement_id): Returns settlement dict
+   - get_by_group(group_id): Returns all settlements in group
+   - get_by_user(user_id): Returns settlements involving user
+
+
+4. SERVICE LAYER (app/services/)
+   ----------------------------------------
+   Purpose: Business logic and orchestration
+   
+   Why Static Methods?
+   - Services are stateless (no instance variables)
+   - Encapsulate business rules
+   - Call multiple repositories if needed
+   - Keep controllers thin
+   
+   AuthService:
+   - register(): Validates uniqueness, creates user
+   - login(): Validates credentials, calls Flask-Login's login_user()
+   - logout(): Calls Flask-Login's logout_user()
+   
+   GroupService:
+   - create_group(): Calls GroupRepository.create()
+   - get_group(): Wrapper for GroupRepository.get_by_id()
+   - get_user_groups(): Returns user's groups
+   - add_member(): Adds member by username (looks up user first)
+   - get_members(): Returns group members
+   - is_member(): Checks membership
+   - search_users(): Searches for users to add
+   
+   ExpenseService:
+   - create_expense(): 
+     1. Gets all group members
+     2. Calculates equal split amounts
+     3. Handles rounding (adds remainder to first person)
+     4. Creates expense with splits
+   - get_group_expenses(): Returns expenses for a group
+   - get_expense(): Returns single expense
+   - get_expense_splits(): Returns split details
+   
+   BalanceService:
+   - calculate_balances():
+     1. Gets all expenses in group
+     2. Gets all splits for each expense
+     3. For each split where user != payer: user owes payer
+     4. Subtracts any settlements
+     5. Returns list of who owes whom
+     
+     Algorithm:
+     - Uses dict with (user_id, paid_by) as key
+     - Adds split amounts to balances
+     - Subtracts settlement amounts
+     - Fetches user details for display
+     - Returns simple list (not optimized/simplified)
+   
+   - settle_up(): Records a settlement payment
+   - get_user_balance_summary(): Filters balances for specific user
+
+
+5. ROUTING LAYER (app/routes/)
+   ----------------------------------------
+   Purpose: Handle HTTP requests/responses
+   
+   Each file is a Flask Blueprint (modular routing)
+   
+   auth.py:
+   - /auth/register (GET/POST): User registration
+   - /auth/login (GET/POST): User login
+   - /auth/logout (GET): User logout
+   
+   main.py:
+   - / (GET): Landing page (redirects to dashboard if logged in)
+   - /dashboard (GET): User dashboard with groups
+   
+   groups.py:
+   - /groups/ (GET): List all user's groups
+   - /groups/create (GET/POST): Create new group
+   - /groups/<group_id> (GET): View group details
+   - /groups/<group_id>/add_member (POST): Add member by username
+   
+   expenses.py:
+   - /expenses/group/<group_id>/create (GET/POST): Add expense
+   - /expenses/group/<group_id>/list (GET): List all expenses
+   
+   settlements.py:
+   - /settlements/group/<group_id> (GET): View balances
+   - /settlements/group/<group_id>/settle (POST): Record settlement
+
+
+6. TEMPLATES LAYER (app/templates/)
+   ----------------------------------------
+   Jinja2 HTML templates with simple structure
+   
+   base.html:
+   - Master template with navbar, flash messages, footer
+   - Navbar shows different links for authenticated/anonymous users
+   - Uses Flask's current_user from Flask-Login
+   
+   Template Syntax:
+   - {{ variable }} : Output variable
+   - {% for item in list %} : Loop
+   - {% if condition %} : Conditional
+   - {{ url_for('blueprint.route') }} : Generate URLs
+   - Dictionary access: {{ group['name'] }} not {{ group.name }}
+
+
+================================================================================
+                        KEY CONCEPTS EXPLAINED
+================================================================================
+
+1. WHY STATIC METHODS EVERYWHERE?
+   --------------------------------
+   - Repositories and Services are STATELESS
+   - They don't store data as instance variables
+   - Every method is independent
+   - Easier for beginners to understand
+   - No need to create objects: just call ClassName.method()
+   
+   Alternative would be:
+   ```python
+   repo = UserRepository()  # Creates instance
+   user = repo.get_by_id(1)
+   ```
+   
+   With static methods:
+   ```python
+   user = UserRepository.get_by_id(1)  # Direct call
+   ```
+   
+   This is called the "Utility Class Pattern" or "Static Helper Pattern"
+
+
+2. REPOSITORY PATTERN
+   -------------------
+   - Separates database logic from business logic
+   - All SQL queries in one place
+   - Easy to switch databases later
+   - Returns dictionaries or User objects, not database rows
+   - Handles all CRUD operations
+
+
+3. SERVICE PATTERN
+   ----------------
+   - Orchestrates multiple repository calls
+   - Contains business rules (e.g., expense splitting logic)
+   - Keeps routes/controllers simple
+   - Single place for complex operations
+
+
+4. NO ORM (Object-Relational Mapping)
+   -----------------------------------
+   Why raw SQL instead of SQLAlchemy?
+   - Beginner-friendly (easier to understand)
+   - Direct control over queries
+   - No "magic" happening behind scenes
+   - Learn SQL fundamentals
+   - Lighter weight
+   
+   Trade-offs:
+   - More verbose code
+   - Manual query construction
+   - No automatic migrations
+   - More SQL injection risk (use ? placeholders!)
+
+
+5. UUID vs AUTO-INCREMENT IDs
+   ---------------------------
+   UUIDs are used because:
+   - Globally unique (can merge databases)
+   - Hard to guess (security)
+   - Can be generated client-side
+   - No sequence/race conditions
+   
+   Trade-off: Larger storage (36 chars vs 4-8 bytes)
+
+
+6. FLASK'S 'g' OBJECT
+   ------------------
+   - Request-scoped storage
+   - Lives only during one HTTP request
+   - Stores database connection
+   - Auto-cleaned after request
+   - Thread-safe
+
+
+7. BCRYPT PASSWORD HASHING
+   ------------------------
+   - One-way hashing (can't decrypt)
+   - Salt automatically included
+   - Slow by design (prevents brute-force)
+   - Industry standard
+   
+   Flow:
+   - Register: password -> bcrypt.hashpw() -> save hash
+   - Login: password + stored hash -> bcrypt.checkpw() -> True/False
+
+
+8. FLASK-LOGIN
+   -----------
+   - Manages user sessions
+   - Sets cookies automatically
+   - Provides @login_required decorator
+   - Provides current_user object in templates/routes
+   - Remembers logged-in state
+
+
+================================================================================
+                        REQUEST FLOW EXAMPLE
+================================================================================
+
+User creates an expense:
+
+1. USER: Submits form on /expenses/group/abc123/create
+   
+2. ROUTE (expenses.py):
+   - @login_required checks if user logged in
+   - Validates user is group member
+   - Extracts description, amount from form
+   - Calls ExpenseService.create_expense()
+
+3. SERVICE (expense_service.py):
+   - Calls GroupRepository.get_members(group_id)
+   - Calculates split: amount / number_of_members
+   - Handles rounding remainder
+   - Calls ExpenseRepository.create()
+
+4. REPOSITORY (expense_repository.py):
+   - Generates UUID for expense
+   - Executes: INSERT INTO expenses ...
+   - Loops through splits
+   - Generates UUID for each split
+   - Executes: INSERT INTO expense_splits ...
+   - Commits transaction
+   - Returns expense dict
+
+5. SERVICE: Returns expense to route
+
+6. ROUTE: Flashes success message, redirects to group view
+
+7. BROWSER: Shows updated group page with new expense
+
+
+================================================================================
+                        BALANCE CALCULATION EXAMPLE
+================================================================================
+
+Group has 3 members: Alice, Bob, Charlie
+
+Expense 1: Dinner $60, paid by Alice
+- Split equally: $20 each
+- Bob owes Alice: $20
+- Charlie owes Alice: $20
+
+Expense 2: Movie $30, paid by Bob  
+- Split equally: $10 each
+- Alice owes Bob: $10
+- Charlie owes Bob: $10
+
+Settlement: Bob pays Alice $10
+
+Final Balances:
+1. Bob owes Alice: $20 - $10 (he paid her) = $10
+2. Alice owes Bob: $10 - $0 = $10 (cancels out with #1)
+3. Charlie owes Alice: $20
+4. Charlie owes Bob: $10
+
+Displayed as:
+- Bob owes Alice $10
+- Charlie owes Alice $20
+- Charlie owes Bob $10
+
+
+================================================================================
+                        CONFIGURATION
+================================================================================
+
+config.py has 3 configurations:
+
+1. DevelopmentConfig (default)
+   - DEBUG = True
+   - DATABASE = splitwise.db
+
+2. ProductionConfig
+   - DEBUG = False
+   - Stricter settings
+
+3. TestingConfig
+   - DATABASE = :memory: (in-RAM database)
+   - For automated tests
+
+
+================================================================================
+                        SECURITY FEATURES
+================================================================================
+
+1. Password Hashing: bcrypt (not plain text)
+2. SQL Injection Protection: Parameterized queries with ?
+3. Session Management: Flask-Login with secure cookies
+4. CSRF Protection: Flask-WTF would add this (not implemented)
+5. Authentication Required: @login_required decorator
+6. Authorization: is_member() checks before operations
+7. UUIDs: Hard to guess resource IDs
+
+
+================================================================================
+                        MISSING FEATURES (Intentionally Simple)
+================================================================================
+
+1. No CSRF tokens (beginner project)
+2. No email verification
+3. No password reset
+4. No input validation beyond required fields
+5. No advanced debt simplification algorithm
+6. No unequal expense splits
+7. No expense categories
+8. No file uploads (receipts)
+9. No API endpoints
+10. No unit tests
+
+
+================================================================================
+                        HOW TO USE
+================================================================================
+
+1. Start: python run.py
+2. Register account at /auth/register
+3. Login at /auth/login
+4. Create group at /groups/create
+5. Add members by username
+6. Add expenses at /expenses/group/<id>/create
+7. View balances at /settlements/group/<id>
+8. Settle up to record payments
+
+
+================================================================================
+                        COMMON ISSUES & SOLUTIONS
+================================================================================
+
+Issue: "Database is locked"
+Solution: Only one connection at a time; close connections properly
+
+Issue: "User not found" when adding member
+Solution: Make sure username is exact match (case-sensitive)
+
+Issue: Templates show {{ variable }} literally
+Solution: Check Jinja2 syntax, ensure variable passed from route
+
+Issue: Balances don't update
+Solution: Settlements subtract from balances; check calculation logic
+
+Issue: "Not a member" error
+Solution: Creator is auto-added, but others need manual add
+
+
+================================================================================
+                        WHY THIS ARCHITECTURE?
+================================================================================
+
+1. SEPARATION OF CONCERNS
+   - Each layer has one job
+   - Easy to find where to make changes
+   - Testable (can mock layers)
+
+2. SCALABILITY
+   - Can swap SQLite for PostgreSQL in Repository layer
+   - Can add caching in Service layer
+   - Can add API routes alongside HTML routes
+
+3. MAINTAINABILITY
+   - Clear structure
+   - Easy for new developers to understand
+   - Business logic separate from framework code
+
+4. BEGINNER-FRIENDLY
+   - No complex ORM magic
+   - See actual SQL
+   - Static methods are simple
+   - One-way data flow
+
+
+================================================================================
+                        LEARNING RESOURCES
+================================================================================
+
+1. Flask Documentation: https://flask.palletsprojects.com/
+2. SQLite Documentation: https://www.sqlite.org/docs.html
+3. Flask-Login: https://flask-login.readthedocs.io/
+4. Repository Pattern: Martin Fowler's Patterns of Enterprise Application
+5. Service Layer Pattern: Domain-Driven Design concepts
+
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

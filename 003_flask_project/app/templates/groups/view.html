@@ -1,0 +1,75 @@
+{% extends "base.html" %} {% block title %}{{ group['name'] }}{% endblock %} {%
+block content %}
+<h1>{{ group['name'] }}</h1>
+<p>{{ group['description'] }}</p>
+
+<div>
+  <a href="{{ url_for('expenses.create', group_id=group['id']) }}" class="btn"
+    >Add Expense</a
+  >
+  <a
+    href="{{ url_for('settlements.view_balances', group_id=group['id']) }}"
+    class="btn"
+    >View Balances</a
+  >
+  <a
+    href="{{ url_for('expenses.list_expenses', group_id=group['id']) }}"
+    class="btn"
+    >All Expenses</a
+  >
+</div>
+
+<h2>Members</h2>
+<ul>
+  {% for member in members %}
+  <li>{{ member['user']['name'] }} ({{ member['user']['username'] }})</li>
+  {% endfor %}
+</ul>
+
+<h3>Add Member</h3>
+<form
+  action="{{ url_for('groups.add_member', group_id=group['id']) }}"
+  method="POST"
+>
+  <div class="form-group">
+    <label for="username">Username:</label>
+    <input
+      type="text"
+      id="username"
+      name="username"
+      required
+      placeholder="Enter username"
+    />
+  </div>
+  <button type="submit" class="btn">Add Member</button>
+</form>
+
+<h2>Recent Expenses</h2>
+{% if expenses %}
+<ul>
+  {% for expense in expenses %}
+  <li>
+    <strong>{{ expense['description'] }}</strong> - ${{
+    "%.2f"|format(expense['amount']) }}<br />
+    Paid by {{ expense['paid_by_user']['name'] }} on {{ expense['expense_date']
+    }}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No expenses yet</p>
+{% endif %}
+
+<h2>Balances</h2>
+{% if balances %}
+<ul>
+  {% for balance in balances %}
+  <li>
+    {{ balance['from_user']['name'] }} owes {{ balance['to_user']['name'] }} ${{
+    "%.2f"|format(balance['amount']) }}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>All settled up!</p>
+{% endif %} {% endblock %}

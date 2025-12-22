@@ -1,0 +1,47 @@
+{% extends "base.html" %} 
+{% block title %}Balances - {{ group['name'] }}{% endblock %} 
+{% block content %}
+<h1>Balances - {{ group['name'] }}</h1>
+
+<h2>You Owe</h2>
+{% if user_summary['owes'] %}
+<ul>
+  {% for balance in user_summary['owes'] %}
+  <li>
+    ${{ "%.2f"|format(balance['amount']) }} to {{ balance['to_user']['name'] }}
+    <form action="{{ url_for('settlements.settle_up', group_id=group['id']) }}" method="POST" style="display: inline">
+      <input type="hidden" name="to_user_id" value="{{ balance['to_user_id'] }}" />
+      <input type="hidden" name="amount" value="{{ balance['amount'] }}" />
+      <button type="submit" class="btn">Settle Up</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>You don't owe anyone</p>
+{% endif %}
+
+<h2>Owed to You</h2>
+{% if user_summary['owed'] %}
+<ul>
+  {% for balance in user_summary['owed'] %}
+  <li>${{ "%.2f"|format(balance['amount']) }} from {{ balance['from_user']['name'] }}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No one owes you</p>
+{% endif %}
+
+<h2>All Balances</h2>
+{% if balances %}
+<ul>
+  {% for balance in balances %}
+  <li>{{ balance['from_user']['name'] }} owes {{ balance['to_user']['name'] }} ${{ "%.2f"|format(balance['amount']) }}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>All settled up!</p>
+{% endif %}
+
+<a href="{{ url_for('groups.view', group_id=group['id']) }}" class="btn">Back to Group</a>
+{% endblock %}
