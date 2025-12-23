@@ -11,10 +11,10 @@ def login():
         return redirect(url_for("main.dashboard"))
 
     if request.method == "POST":
-        email_or_username = request.form.get("email_or_username")
+        username = request.form.get("username")
         password = request.form.get("password")
 
-        user, error = AuthService.login(email_or_username, password)
+        user, error = AuthService.login(username, password)
 
         if error:
             flash(error, "error")

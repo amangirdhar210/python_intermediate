@@ -22,7 +22,6 @@ def create(group_id):
             amount=amount,
             group_id=group_id,
             paid_by=current_user.id,
-            split_type="equal",
         )
 
         flash("Expense added successfully!", "success")

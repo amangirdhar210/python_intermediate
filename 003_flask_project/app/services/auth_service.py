@@ -6,9 +6,6 @@ class AuthService:
 
     @staticmethod
     def register(email, username, name, password):
-        if UserRepository.get_by_email(email):
-            return None, "Email already exists"
-
         if UserRepository.get_by_username(username):
             return None, "Username already exists"
 
@@ -16,10 +13,8 @@ class AuthService:
         return user, None
 
     @staticmethod
-    def login(email_or_username, password):
-        user = UserRepository.get_by_email(email_or_username)
-        if not user:
-            user = UserRepository.get_by_username(email_or_username)
+    def login(username, password):
+        user = UserRepository.get_by_username(username)
 
         if user and UserRepository.check_password(user, password):
             login_user(user, remember=True)

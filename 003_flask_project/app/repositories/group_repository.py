@@ -1,5 +1,6 @@
 from app import get_db
 import uuid
+import time
 
 
 class GroupRepository:
@@ -7,18 +8,20 @@ class GroupRepository:
     @staticmethod
     def create(name, created_by, description=None):
         group_id = str(uuid.uuid4())
+        created_at = int(time.time())
+        joined_at = created_at
 
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "INSERT INTO groups (id, name, created_by, description) VALUES (?, ?, ?, ?)",
-            (group_id, name, created_by, description),
+            "INSERT INTO groups (id, name, created_by, description, created_at) VALUES (?, ?, ?, ?, ?)",
+            (group_id, name, created_by, description, created_at),
         )
 
         member_id = str(uuid.uuid4())
         cursor.execute(
-            "INSERT INTO group_members (id, group_id, user_id) VALUES (?, ?, ?)",
-            (member_id, group_id, created_by),
+            "INSERT INTO group_members (id, group_id, user_id, joined_at) VALUES (?, ?, ?, ?)",
+            (member_id, group_id, created_by, joined_at),
         )
 
         db.commit()
@@ -78,9 +81,10 @@ class GroupRepository:
             return False
 
         member_id = str(uuid.uuid4())
+        joined_at = int(time.time())
         cursor.execute(
-            "INSERT INTO group_members (id, group_id, user_id) VALUES (?, ?, ?)",
-            (member_id, group_id, user_id),
+            "INSERT INTO group_members (id, group_id, user_id, joined_at) VALUES (?, ?, ?, ?)",
+            (member_id, group_id, user_id, joined_at),
         )
         db.commit()
         return True

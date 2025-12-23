@@ -1,5 +1,6 @@
 from app import get_db
 import uuid
+import time
 
 
 class SettlementRepository:
@@ -7,36 +8,24 @@ class SettlementRepository:
     @staticmethod
     def create(group_id, from_user_id, to_user_id, amount):
         settlement_id = str(uuid.uuid4())
+        settled_at = int(time.time())
 
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "INSERT INTO settlements (id, group_id, from_user_id, to_user_id, amount) VALUES (?, ?, ?, ?, ?)",
-            (settlement_id, group_id, from_user_id, to_user_id, amount),
+            "INSERT INTO settlements (id, group_id, from_user_id, to_user_id, amount, settled_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (settlement_id, group_id, from_user_id, to_user_id, amount, settled_at),
         )
         db.commit()
 
-        return SettlementRepository.get_by_id(settlement_id)
-
-    @staticmethod
-    def get_by_id(settlement_id):
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
-            "SELECT id, group_id, from_user_id, to_user_id, amount, settled_at FROM settlements WHERE id = ?",
-            (settlement_id,),
-        )
-        row = cursor.fetchone()
-        if row:
-            return {
-                "id": row[0],
-                "group_id": row[1],
-                "from_user_id": row[2],
-                "to_user_id": row[3],
-                "amount": row[4],
-                "settled_at": row[5],
-            }
-        return None
+        return {
+            "id": settlement_id,
+            "group_id": group_id,
+            "from_user_id": from_user_id,
+            "to_user_id": to_user_id,
+            "amount": amount,
+            "settled_at": settled_at,
+        }
 
     @staticmethod
     def get_by_group(group_id):

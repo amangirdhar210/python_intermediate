@@ -1,0 +1,114 @@
+{
+  "TableName": "ExpenseSplitApp",
+  "Items": [
+    {
+      "ItemType": "User Profile (by ID)",
+      "PK": "USER#<user_id>",
+      "SK": "PROFILE",
+      "Attributes": {
+        "email": "string",
+        "username": "string",
+        "password_hash": "string",
+        "name": "string",
+        "created_at": "number (UNIX timestamp)"
+      },
+      "AccessPattern": "Get user by ID, Update user, Delete user"
+    },
+    {
+      "ItemType": "User Profile (by Username)",
+      "PK": "USER#<username>",
+      "SK": "PROFILE",
+      "Attributes": {
+        "email": "string",
+        "user_id": "string",
+        "password_hash": "string",
+        "name": "string",
+        "created_at": "number (UNIX timestamp)"
+      },
+      "AccessPattern": "Login - Get user by username"
+    },
+    {
+      "ItemType": "User's Group Membership",
+      "PK": "USER#<user_id>",
+      "SK": "GROUP#<group_id>",
+      "Attributes": {
+        "group_id": "string",
+        "group_name": "string",
+        "description": "string",
+        "created_by": "string (user_id)",
+        "created_by_name": "string",
+        "joined_at": "number (UNIX timestamp)"
+      },
+      "AccessPattern": "Get all groups for a user (without member details)"
+    },
+    {
+      "ItemType": "Group Metadata",
+      "PK": "GROUP#<group_id>",
+      "SK": "Group_Info",
+      "Attributes": {
+        "name": "string",
+        "description": "string",
+        "created_by": "string (user_id)",
+        "created_by_name": "string",
+        "created_at": "number (UNIX timestamp)",
+        "members": [
+          {
+            "user_id": "string",
+            "username": "string",
+            "name": "string",
+            "joined_at": "number (UNIX timestamp)"
+          }
+        ],
+        "member_count": "number"
+      },
+      "AccessPattern": "Get full group details with all members"
+    },
+    {
+      "ItemType": "Group Expense",
+      "PK": "GROUP#<group_id>",
+      "SK": "EXPENSE#<created_at>#<expense_id>",
+      "Attributes": {
+        "expense_id": "string",
+        "description": "string",
+        "amount": "number (decimal)",
+        "paid_by": {
+          "id": "string (user_id)",
+          "name": "string",
+          "username": "string"
+        },
+        "splits": [
+          {
+            "user_id": "string",
+            "name": "string",
+            "username": "string",
+            "amount": "number (decimal)"
+          }
+        ],
+        "expense_date": "number (UNIX timestamp)",
+        "created_at": "number (UNIX timestamp)"
+      },
+      "AccessPattern": "Get all expenses for a group (sorted by created_at), Delete expense by expense_id"
+    },
+    {
+      "ItemType": "Group Settlement",
+      "PK": "GROUP#<group_id>",
+      "SK": "SETTLEMENT#<created_at>#<settlement_id>",
+      "Attributes": {
+        "settlement_id": "string",
+        "from_user": {
+          "id": "string (user_id)",
+          "name": "string",
+          "username": "string"
+        },
+        "to_user": {
+          "id": "string (user_id)",
+          "name": "string",
+          "username": "string"
+        },
+        "amount": "number (decimal)",
+        "settled_at": "number (UNIX timestamp)"
+      },
+      "AccessPattern": "Get all settlements for a group (sorted by settled_at), Delete settlement by settlement_id"
+    }
+  ]
+}

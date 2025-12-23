@@ -1,27 +1,29 @@
 from app import get_db
 import uuid
+import time
 
 
 class ExpenseRepository:
 
     @staticmethod
-    def create(description, amount, group_id, paid_by, splits):
+    def create(description, amount, group_id, paid_by):
         expense_id = str(uuid.uuid4())
+        current_time = int(time.time())
 
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "INSERT INTO expenses (id, description, amount, group_id, paid_by) VALUES (?, ?, ?, ?, ?)",
-            (expense_id, description, amount, group_id, paid_by),
+            "INSERT INTO expenses (id, description, amount, group_id, paid_by, expense_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                expense_id,
+                description,
+                amount,
+                group_id,
+                paid_by,
+                current_time,
+                current_time,
+            ),
         )
-
-        for user_id, split_amount in splits.items():
-            split_id = str(uuid.uuid4())
-            cursor.execute(
-                "INSERT INTO expense_splits (id, expense_id, user_id, amount) VALUES (?, ?, ?, ?)",
-                (split_id, expense_id, user_id, split_amount),
-            )
-
         db.commit()
         return ExpenseRepository.get_by_id(expense_id)
 
@@ -74,20 +76,6 @@ class ExpenseRepository:
                     "email": row[9],
                 },
             }
-            for row in rows
-        ]
-
-    @staticmethod
-    def get_splits(expense_id):
-        db = get_db()
-        cursor = db.cursor()
-        cursor.execute(
-            "SELECT id, expense_id, user_id, amount FROM expense_splits WHERE expense_id = ?",
-            (expense_id,),
-        )
-        rows = cursor.fetchall()
-        return [
-            {"id": row[0], "expense_id": row[1], "user_id": row[2], "amount": row[3]}
             for row in rows
         ]
 

@@ -1,6 +1,7 @@
 from app.repositories.expense_repository import ExpenseRepository
 from app.repositories.settlement_repository import SettlementRepository
 from app.repositories.user_repository import UserRepository
+from app.repositories.group_repository import GroupRepository
 
 
 class BalanceService:
@@ -9,17 +10,22 @@ class BalanceService:
     def calculate_balances(group_id):
         expenses = ExpenseRepository.get_by_group(group_id)
         settlements = SettlementRepository.get_by_group(group_id)
+        members = GroupRepository.get_members(group_id)
+        member_ids = [m["user_id"] for m in members]
 
         balances = {}
 
+        # Calculate equal splits for each expense
         for expense in expenses:
-            splits = ExpenseRepository.get_splits(expense["id"])
-            for split in splits:
-                if split["user_id"] != expense["paid_by"]:
-                    key = (split["user_id"], expense["paid_by"])
+            # Equal split among all group members
+            split_amount = expense["amount"] / len(member_ids)
+
+            for user_id in member_ids:
+                if user_id != expense["paid_by"]:
+                    key = (user_id, expense["paid_by"])
                     if key not in balances:
                         balances[key] = 0
-                    balances[key] += split["amount"]
+                    balances[key] += split_amount
 
         for settlement in settlements:
             key = (settlement["from_user_id"], settlement["to_user_id"])

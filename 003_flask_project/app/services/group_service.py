@@ -1,5 +1,4 @@
 from app.repositories.group_repository import GroupRepository
-from app.repositories.user_repository import UserRepository
 
 
 class GroupService:
@@ -27,7 +26,3 @@ class GroupService:
     @staticmethod
     def is_member(group_id, user_id):
         return GroupRepository.is_member(group_id, user_id)
-
-    @staticmethod
-    def search_users(query):
-        return UserRepository.search(query)
