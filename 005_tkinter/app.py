@@ -1,4 +1,8 @@
-def divide(x,y):
-    return x/y
+"""This is module docstring"""
+
+VAL = True
+
+if not VAL:
+    print("True")
 
 
