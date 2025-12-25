@@ -9,15 +9,28 @@ TABLE_NAME = "ExpenseSplitApp"
 class ExpenseRepositoryDDB:
 
     @staticmethod
-    def create(description, amount, group_id, paid_by, splits):
+    def create(description, amount, group_id, paid_by, splits=None):
         expense_id = str(uuid.uuid4())
         created_at = int(datetime.utcnow().timestamp())
 
         from app.ddb_repo.user_ddb_repo import UserRepositoryDDB
+        from app.ddb_repo.group_ddb_repo import GroupRepositoryDDB
 
         payer = UserRepositoryDDB.get_by_id(paid_by)
         if not payer:
             raise ValueError("Payer user not found")
+
+        if splits is None:
+            group = GroupRepositoryDDB.get_by_id(group_id)
+            if not group:
+                raise ValueError("Group not found")
+
+            member_count = len(group.get("members", []))
+            if member_count == 0:
+                raise ValueError("Group has no members")
+
+            split_amount = amount / member_count
+            splits = {member["user_id"]: split_amount for member in group["members"]}
 
         splits_list = []
         for user_id, split_amount in splits.items():
@@ -27,8 +40,8 @@ class ExpenseRepositoryDDB:
                     {
                         "M": {
                             "user_id": {"S": user_id},
-                            "name": {"S": user["name"]},
-                            "username": {"S": user["username"]},
+                            "name": {"S": user.name},
+                            "username": {"S": user.username},
                             "amount": {"N": str(split_amount)},
                         }
                     }
@@ -46,8 +59,8 @@ class ExpenseRepositoryDDB:
                     "paid_by": {
                         "M": {
                             "id": {"S": paid_by},
-                            "name": {"S": payer["name"]},
-                            "username": {"S": payer["username"]},
+                            "name": {"S": payer.name},
+                            "username": {"S": payer.username},
                         }
                     },
                     "splits": {"L": splits_list},
@@ -189,3 +202,35 @@ class ExpenseRepositoryDDB:
                 )
 
         return splits
+
+    @staticmethod
+    def get_by_id(expense_id, group_id=None):
+        if group_id is None:
+            raise ValueError("group_id is required for DynamoDB queries")
+
+        response = dynamodb.query(
+            TableName=TABLE_NAME,
+            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk_prefix)",
+            FilterExpression="expense_id = :expense_id",
+            ExpressionAttributeValues={
+                ":pk": {"S": f"GROUP#{group_id}"},
+                ":sk_prefix": {"S": "EXPENSE#"},
+                ":expense_id": {"S": expense_id},
+            },
+        )
+
+        items = response.get("Items", [])
+        if not items:
+            return None
+
+        item = items[0]
+        paid_by_map = item["paid_by"]["M"]
+
+        return {
+            "id": item["expense_id"]["S"],
+            "description": item["description"]["S"],
+            "amount": float(item["amount"]["N"]),
+            "group_id": group_id,
+            "paid_by": paid_by_map["id"]["S"],
+            "expense_date": int(item["expense_date"]["N"]),
+        }

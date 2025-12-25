@@ -31,15 +31,15 @@ class GroupRepositoryDDB:
                                 "name": {"S": name},
                                 "description": {"S": description or ""},
                                 "created_by": {"S": created_by},
-                                "created_by_name": {"S": creator["name"]},
+                                "created_by_name": {"S": creator.name},
                                 "created_at": {"N": str(created_at)},
                                 "members": {
                                     "L": [
                                         {
                                             "M": {
                                                 "user_id": {"S": created_by},
-                                                "username": {"S": creator["username"]},
-                                                "name": {"S": creator["name"]},
+                                                "username": {"S": creator.username},
+                                                "name": {"S": creator.name},
                                                 "joined_at": {"N": str(created_at)},
                                             }
                                         }
@@ -60,7 +60,7 @@ class GroupRepositoryDDB:
                                 "group_name": {"S": name},
                                 "description": {"S": description or ""},
                                 "created_by": {"S": created_by},
-                                "created_by_name": {"S": creator["name"]},
+                                "created_by_name": {"S": creator.name},
                                 "joined_at": {"N": str(created_at)},
                             },
                         }
@@ -172,8 +172,8 @@ class GroupRepositoryDDB:
         new_member = {
             "M": {
                 "user_id": {"S": user_id},
-                "username": {"S": user["username"]},
-                "name": {"S": user["name"]},
+                "username": {"S": user.username},
+                "name": {"S": user.name},
                 "joined_at": {"N": str(joined_at)},
             }
         }

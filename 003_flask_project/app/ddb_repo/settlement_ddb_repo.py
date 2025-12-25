@@ -31,15 +31,15 @@ class SettlementRepositoryDDB:
                     "from_user": {
                         "M": {
                             "id": {"S": from_user_id},
-                            "name": {"S": from_user["name"]},
-                            "username": {"S": from_user["username"]},
+                            "name": {"S": from_user.name},
+                            "username": {"S": from_user.username},
                         }
                     },
                     "to_user": {
                         "M": {
                             "id": {"S": to_user_id},
-                            "name": {"S": to_user["name"]},
-                            "username": {"S": to_user["username"]},
+                            "name": {"S": to_user.name},
+                            "username": {"S": to_user.username},
                         }
                     },
                     "amount": {"N": str(amount)},

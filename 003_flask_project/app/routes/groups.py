@@ -60,9 +60,9 @@ def add_member(group_id):
 
     username = request.form.get("username")
 
-    from app.repositories.user_repository import UserRepository
+    from app.ddb_repo.user_ddb_repo import UserRepositoryDDB
 
-    user = UserRepository.get_by_username(username)
+    user = UserRepositoryDDB.get_by_username(username)
 
     if not user:
         flash(f"User '{username}' not found", "error")

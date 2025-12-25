@@ -3,6 +3,7 @@ import bcrypt
 import uuid
 from decimal import Decimal
 from datetime import datetime
+from app.models.user import User
 
 dynamodb = boto3.client("dynamodb")
 TABLE_NAME = "ExpenseSplitApp"
@@ -76,14 +77,14 @@ class UserRepositoryDDB:
             return None
 
         item = items[0]
-        return {
-            "id": user_id,
-            "email": item["email"]["S"],
-            "username": item["username"]["S"],
-            "password_hash": item["password_hash"]["S"],
-            "name": item["name"]["S"],
-            "created_at": int(item["created_at"]["N"]),
-        }
+        return User(
+            id=user_id,
+            email=item["email"]["S"],
+            username=item["username"]["S"],
+            password_hash=item["password_hash"]["S"],
+            name=item["name"]["S"],
+            created_at=int(item["created_at"]["N"]),
+        )
 
     @staticmethod
     def get_by_username(username):
@@ -101,14 +102,14 @@ class UserRepositoryDDB:
             return None
 
         item = items[0]
-        return {
-            "id": item["user_id"]["S"],
-            "email": item["email"]["S"],
-            "username": username,
-            "password_hash": item["password_hash"]["S"],
-            "name": item["name"]["S"],
-            "created_at": int(item["created_at"]["N"]),
-        }
+        return User(
+            id=item["user_id"]["S"],
+            email=item["email"]["S"],
+            username=username,
+            password_hash=item["password_hash"]["S"],
+            name=item["name"]["S"],
+            created_at=int(item["created_at"]["N"]),
+        )
 
     @staticmethod
     def get_all():
@@ -120,5 +121,5 @@ class UserRepositoryDDB:
     @staticmethod
     def check_password(user, password):
         return bcrypt.checkpw(
-            password.encode("utf-8"), user["password_hash"].encode("utf-8")
+            password.encode("utf-8"), user.password_hash.encode("utf-8")
         )

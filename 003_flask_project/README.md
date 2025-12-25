@@ -1,6 +1,6 @@
 # Splitwise Clone
 
-A Flask-based expense splitting application with clean architecture and minimal dependencies.
+A Flask-based expense splitting application with DynamoDB backend, clean architecture and minimal dependencies.
 
 ## Features
 
@@ -17,18 +17,16 @@ A Flask-based expense splitting application with clean architecture and minimal 
 003_flask_project/
 ├── app/
 │   ├── __init__.py
+│   ├── dynamo_schema.json
 │   ├── models/
-│   │   ├── user.py
-│   │   ├── group.py
-│   │   ├── expense.py
-│   │   ├── settlement.py
-│   │   ├── group_member.py
-│   │   └── expense_split.py
+│   │   └── user.py
+│   ├── ddb_repo/
+│   │   ├── user_ddb_repo.py
+│   │   ├── group_ddb_repo.py
+│   │   ├── expense_ddb_repo.py
+│   │   └── settlement_ddb_repo.py
 │   ├── repositories/
-│   │   ├── user_repository.py
-│   │   ├── group_repository.py
-│   │   ├── expense_repository.py
-│   │   └── settlement_repository.py
+│   │   └── __init__.py
 │   ├── services/
 │   │   ├── auth_service.py
 │   │   ├── group_service.py
@@ -58,32 +56,52 @@ pip install -r requirements.txt
 2. Set up environment variables:
 
 ```bash
-cp .env.example .env
+export AWS_REGION=us-east-1
+export DYNAMODB_TABLE_NAME=ExpenseSplitApp
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export SECRET_KEY=your_flask_secret_key
 ```
 
-3. Run the application:
+3. Create DynamoDB table using the schema in `app/dynamo_schema.json`:
+
+```bash
+aws dynamodb create-table \
+    --table-name ExpenseSplitApp \
+    --attribute-definitions \
+        AttributeName=PK,AttributeType=S \
+        AttributeName=SK,AttributeType=S \
+    --key-schema \
+        AttributeName=PK,KeyType=HASH \
+        AttributeName=SK,KeyType=RANGE \
+    --billing-mode PAY_PER_REQUEST
+```
+
+4. Run the application:
 
 ```bash
 python run.py
 ```
 
-4. Access at http://localhost:5000
+5. Access at http://localhost:5000
 
 ## Architecture
 
-- **Models**: SQLAlchemy ORM models for database schema
-- **Repositories**: Data access layer with database operations
+- **Models**: User model for Flask-Login integration
+- **DDB Repositories**: Data access layer with DynamoDB operations
 - **Services**: Business logic layer for expense splitting and balance calculation
 - **Routes**: Flask blueprints for handling HTTP requests
 - **Templates**: Jinja2 templates for UI rendering
 
 ## Database
 
-SQLite database with the following tables:
+DynamoDB single-table design with the following access patterns:
 
-- users
-- groups
-- group_members
-- expenses
-- expense_splits
-- settlements
+- User Profile by ID: `PK=USER#<user_id>`, `SK=PROFILE`
+- User Profile by Username: `PK=USER#<username>`, `SK=PROFILE`
+- User's Groups: `PK=USER#<user_id>`, `SK=GROUP#<group_id>`
+- Group Metadata: `PK=GROUP#<group_id>`, `SK=Group_Info`
+- Group Expenses: `PK=GROUP#<group_id>`, `SK=EXPENSE#<created_at>#<expense_id>`
+- Group Settlements: `PK=GROUP#<group_id>`, `SK=SETTLEMENT#<created_at>#<settlement_id>`
+
+See `app/dynamo_schema.json` for complete schema details.
