@@ -1,7 +1,7 @@
-from app.repositories.user_repository import UserRepository
-from app.repositories.group_repository import GroupRepository
-from app.repositories.expense_repository import ExpenseRepository
-from app.repositories.settlement_repository import SettlementRepository
+from app.ddb_repo.user_ddb_repo import UserRepositoryDDB
+from app.ddb_repo.group_ddb_repo import GroupRepositoryDDB
+from app.ddb_repo.expense_ddb_repo import ExpenseRepositoryDDB
+from app.ddb_repo.settlement_ddb_repo import SettlementRepositoryDDB
 
 __all__ = [
     "UserRepository",

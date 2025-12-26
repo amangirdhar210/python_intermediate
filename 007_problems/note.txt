@@ -1,0 +1,1 @@
+hello there this is a sample text code to count the numbe rof words the line has.
