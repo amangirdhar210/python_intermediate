@@ -20,7 +20,6 @@ class UserRepositoryDDB:
         created_at = int(datetime.utcnow().timestamp())
 
         try:
-            # Transaction to create both items atomically
             dynamodb.transact_write_items(
                 TransactItems=[
                     {
